@@ -35,10 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Background container for looping images (placeholder for now)
           Container(color: Colors.amber[200]),
-
-          // Login form overlay
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
