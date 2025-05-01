@@ -1,15 +1,21 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.travelbuddies">
 
-    <!-- Permissions for accessing location -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 
     <application
         android:label="travelbuddies"
         android:icon="@mipmap/ic_launcher">
-        
-        <!-- MainActivity using Flutter v2 embedding -->
+
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyDfQhsjL8tkYd5XAM4JQbE8o3RYSc3wCT0"/>
+
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2"/>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -19,25 +25,14 @@
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
 
-            <!-- API Key for Google Maps or Places API -->
-            <meta-data
-                android:name="com.google.android.geo.API_KEY"
-                android:value="AIzaSyDfQhsjL8tkYd5XAM4JQbE8o3RYSc3wCT0"/>
-
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
 
-        <!-- Required by Flutter for embedding v2 -->
-        <meta-data
-            android:name="flutterEmbedding"
-            android:value="2"/>
-
     </application>
 
-    <!-- Required to query activities that can process text -->
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
