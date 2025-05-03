@@ -35,8 +35,21 @@ class _MatchScreenState extends State<MatchScreen> {
     });
   }
 
-  void handleMatch(bool isAccepted) {
-    // TODO: Save match/skip decision to Firestore here
+  // Function to store the like status in Firestore
+  void handleMatch(bool isAccepted) async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null || profiles.isEmpty) return;
+
+    final likedUserId = profiles[currentIndex].id;
+
+    // Store the like/skip in Firestore under the 'likes' collection
+    await FirebaseFirestore.instance.collection('likes').add({
+      'userId': currentUser.uid,
+      'likedUserId': likedUserId,
+      'status': isAccepted ? 'liked' : 'skipped',
+      'timestamp': Timestamp.now(),
+    });
+
     setState(() {
       if (currentIndex < profiles.length - 1) {
         currentIndex++;
