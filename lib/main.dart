@@ -18,8 +18,33 @@ class TravelBuddyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Travel Buddy',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.orange),
-      home: AuthWrapper(),
+      theme: ThemeData(
+        primarySwatch: Colors.purple,
+        scaffoldBackgroundColor: Color(0xFFF6EAFB), // light purple background
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.purple,
+          foregroundColor: Colors.white,
+          centerTitle: true,
+          elevation: 0,
+        ),
+        textTheme: const TextTheme(
+          titleLarge: TextStyle(color: Colors.white),
+          bodyMedium: TextStyle(color: Colors.black),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.purple,
+            foregroundColor: Colors.white,
+          ),
+        ),
+        iconTheme: const IconThemeData(color: Colors.purple),
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          backgroundColor: Color(0xFFF6EAFB),
+          selectedItemColor: Colors.deepOrange,
+          unselectedItemColor: Colors.grey,
+        ),
+      ),
+      home: const AuthWrapper(),
     );
   }
 }
@@ -35,9 +60,9 @@ class AuthWrapper extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         } else if (snapshot.hasData) {
-          return const HomeScreen(); // Once logged in
+          return const HomeScreen();
         } else {
-          return const LoginScreen(); // Not logged in
+          return const LoginScreen();
         }
       },
     );
