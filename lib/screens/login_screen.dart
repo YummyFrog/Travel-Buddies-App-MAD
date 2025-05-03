@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'home_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -18,12 +19,31 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void loginUser() async {
     try {
-      await _auth.signInWithEmailAndPassword(
+      final UserCredential userCredential =
+          await _auth.signInWithEmailAndPassword(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
-      // TODO: Navigate to Home Screen
+
+      final user = userCredential.user;
+
+      if (user != null) {
+        debugPrint('Login successful: ${user.email}');
+        setState(() {
+          errorMessage = '';
+        });
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      } else {
+        setState(() {
+          errorMessage = 'Login failed: user is null.';
+        });
+      }
     } on FirebaseAuthException catch (e) {
+      debugPrint('Login error: ${e.code} - ${e.message}');
       setState(() {
         errorMessage = e.message ?? "Login failed.";
       });
