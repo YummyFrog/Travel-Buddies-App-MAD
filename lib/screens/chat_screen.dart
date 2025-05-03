@@ -31,17 +31,19 @@ class _ChatScreenState extends State<ChatScreen> {
     final currentUserId = currentUser!.uid;
 
     // Generate unique chatRoomId
-    final chatRoomId = currentUserId.compareTo(otherUserId) < 0
-        ? '$currentUserId\_$otherUserId'
-        : '$otherUserId\_$currentUserId';
+    final chatRoomId =
+        currentUserId.compareTo(otherUserId) < 0
+            ? '$currentUserId\_$otherUserId'
+            : '$otherUserId\_$currentUserId';
 
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => PrivateChatScreen(
-          chatRoomId: chatRoomId,
-          otherUserName: otherUserName,
-        ),
+        builder:
+            (_) => PrivateChatScreen(
+              chatRoomId: chatRoomId,
+              otherUserName: otherUserName,
+            ),
       ),
     );
   }
@@ -55,7 +57,10 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Column(
           children: [
             // Public Announcement Section
-            const Text("Public Announcements", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text(
+              "Public Announcements",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             Row(
               children: [
                 Expanded(
@@ -77,12 +82,14 @@ class _ChatScreenState extends State<ChatScreen> {
             Expanded(
               flex: 2,
               child: StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('announcements')
-                    .orderBy('timestamp', descending: true)
-                    .snapshots(),
+                stream:
+                    FirebaseFirestore.instance
+                        .collection('announcements')
+                        .orderBy('timestamp', descending: true)
+                        .snapshots(),
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData) return const CircularProgressIndicator();
+                  if (!snapshot.hasData)
+                    return const CircularProgressIndicator();
                   final posts = snapshot.data!.docs;
                   return ListView.builder(
                     itemCount: posts.length,
@@ -102,23 +109,57 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
 
             const Divider(height: 20, thickness: 2),
-            const Text("Matches", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text(
+              "Matches",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             Expanded(
               flex: 1,
               child: StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance.collection('users').snapshots(),
+                stream:
+                    FirebaseFirestore.instance
+                        .collection('matches')
+                        .where('userIds', arrayContains: currentUser?.uid)
+                        .snapshots(),
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData) return const CircularProgressIndicator();
-                  final users = snapshot.data!.docs.where((doc) => doc.id != currentUser?.uid).toList();
-                  return ListView.builder(
-                    itemCount: users.length,
-                    itemBuilder: (context, index) {
-                      final user = users[index];
-                      final name = user['name'] ?? 'Unnamed';
-                      return ListTile(
-                        title: Text(name),
-                        trailing: const Icon(Icons.chat_bubble_outline),
-                        onTap: () => _startPrivateChat(user.id, name),
+                  if (!snapshot.hasData)
+                    return const CircularProgressIndicator();
+                  final matchDocs = snapshot.data!.docs;
+
+                  final otherUserIds =
+                      matchDocs.map((doc) {
+                        final ids = List<String>.from(doc['userIds']);
+                        ids.remove(currentUser!.uid);
+                        return ids.first;
+                      }).toList();
+
+                  if (otherUserIds.isEmpty) {
+                    return const Center(child: Text("No matches yet."));
+                  }
+
+                  return FutureBuilder<QuerySnapshot>(
+                    future:
+                        FirebaseFirestore.instance.collection('users').get(),
+                    builder: (context, usersSnapshot) {
+                      if (!usersSnapshot.hasData)
+                        return const CircularProgressIndicator();
+                      final allUsers = usersSnapshot.data!.docs;
+                      final matchedUsers =
+                          allUsers
+                              .where((doc) => otherUserIds.contains(doc.id))
+                              .toList();
+
+                      return ListView.builder(
+                        itemCount: matchedUsers.length,
+                        itemBuilder: (context, index) {
+                          final user = matchedUsers[index];
+                          final name = user['name'] ?? 'Unnamed';
+                          return ListTile(
+                            title: Text(name),
+                            trailing: const Icon(Icons.chat_bubble_outline),
+                            onTap: () => _startPrivateChat(user.id, name),
+                          );
+                        },
                       );
                     },
                   );
@@ -161,10 +202,10 @@ class _PrivateChatScreenState extends State<PrivateChatScreen> {
         .doc(widget.chatRoomId)
         .collection('messages')
         .add({
-      'senderId': currentUser?.uid,
-      'text': text,
-      'timestamp': Timestamp.now(),
-    });
+          'senderId': currentUser?.uid,
+          'text': text,
+          'timestamp': Timestamp.now(),
+        });
 
     _messageController.clear();
   }
@@ -177,14 +218,16 @@ class _PrivateChatScreenState extends State<PrivateChatScreen> {
         children: [
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('chats')
-                  .doc(widget.chatRoomId)
-                  .collection('messages')
-                  .orderBy('timestamp')
-                  .snapshots(),
+              stream:
+                  FirebaseFirestore.instance
+                      .collection('chats')
+                      .doc(widget.chatRoomId)
+                      .collection('messages')
+                      .orderBy('timestamp')
+                      .snapshots(),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                if (!snapshot.hasData)
+                  return const Center(child: CircularProgressIndicator());
                 final messages = snapshot.data!.docs;
                 return ListView.builder(
                   itemCount: messages.length,
@@ -192,10 +235,17 @@ class _PrivateChatScreenState extends State<PrivateChatScreen> {
                     final message = messages[index];
                     final isMe = message['senderId'] == currentUser?.uid;
                     return Align(
-                      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                      alignment:
+                          isMe ? Alignment.centerRight : Alignment.centerLeft,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 8,
+                          horizontal: 12,
+                        ),
+                        margin: const EdgeInsets.symmetric(
+                          vertical: 4,
+                          horizontal: 8,
+                        ),
                         decoration: BoxDecoration(
                           color: isMe ? Colors.orange[100] : Colors.grey[300],
                           borderRadius: BorderRadius.circular(12),
@@ -219,10 +269,7 @@ class _PrivateChatScreenState extends State<PrivateChatScreen> {
                   ),
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.send),
-                onPressed: _sendMessage,
-              ),
+              IconButton(icon: const Icon(Icons.send), onPressed: _sendMessage),
             ],
           ),
         ],

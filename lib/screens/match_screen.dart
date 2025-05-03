@@ -13,6 +13,7 @@ class _MatchScreenState extends State<MatchScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   List<DocumentSnapshot> profiles = [];
   int currentIndex = 0;
+  bool noMoreProfiles = false;
 
   @override
   void initState() {
@@ -24,43 +25,124 @@ class _MatchScreenState extends State<MatchScreen> {
     final currentUser = _auth.currentUser;
     if (currentUser == null) return;
 
+    final likesSnapshot =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .collection('likes')
+            .get();
+
+    final skippedSnapshot =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .collection('skipped')
+            .get();
+
+    final likedIds = likesSnapshot.docs.map((doc) => doc.id).toSet();
+    final skippedIds = skippedSnapshot.docs.map((doc) => doc.id).toSet();
+
+    final alreadySeenIds = {...likedIds, ...skippedIds};
+
     final snapshot = await FirebaseFirestore.instance.collection('users').get();
-    final allProfiles = snapshot.docs;
+    final allProfiles =
+        snapshot.docs
+            .where(
+              (doc) =>
+                  doc.id != currentUser.uid && !alreadySeenIds.contains(doc.id),
+            )
+            .toList();
 
     setState(() {
-      profiles =
-          allProfiles
-              .where((doc) => doc.id != currentUser.uid) // exclude self
-              .toList();
+      profiles = allProfiles;
+      currentIndex = 0;
+      noMoreProfiles = profiles.isEmpty;
     });
   }
 
-  // Function to store the like status in Firestore
-  void handleMatch(bool isAccepted) async {
+  Future<void> handleMatch(bool isAccepted) async {
     final currentUser = _auth.currentUser;
-    if (currentUser == null || profiles.isEmpty) return;
+    if (currentUser == null || currentIndex >= profiles.length) return;
 
-    final likedUserId = profiles[currentIndex].id;
+    final targetProfile = profiles[currentIndex];
+    final targetUserId = targetProfile.id;
 
-    // Store the like/skip in Firestore under the 'likes' collection
-    await FirebaseFirestore.instance.collection('likes').add({
-      'userId': currentUser.uid,
-      'likedUserId': likedUserId,
-      'status': isAccepted ? 'liked' : 'skipped',
-      'timestamp': Timestamp.now(),
-    });
+    final userDoc = FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser.uid);
+
+    if (isAccepted) {
+      await userDoc.collection('likes').doc(targetUserId).set({
+        'timestamp': Timestamp.now(),
+      });
+      // Check for mutual match
+      final targetLike =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(targetUserId)
+              .collection('likes')
+              .doc(currentUser.uid)
+              .get();
+
+      if (targetLike.exists) {
+        final sortedIds = [currentUser.uid, targetUserId]..sort();
+        final matchId = "${sortedIds[0]}_${sortedIds[1]}";
+        await FirebaseFirestore.instance.collection('matches').doc(matchId).set(
+          {'userIds': sortedIds, 'timestamp': Timestamp.now()},
+        );
+        await FirebaseFirestore.instance.collection('chats').doc(matchId).set({
+          'userIds': sortedIds,
+        });
+
+        showDialog(
+          context: context,
+          builder:
+              (_) => AlertDialog(
+                title: const Text("It's a Match!"),
+                content: const Text(
+                  "You both liked each other! Start chatting now.",
+                ),
+                actions: [
+                  TextButton(
+                    child: const Text("OK"),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+        );
+      }
+    } else {
+      await userDoc.collection('skipped').doc(targetUserId).set({
+        'timestamp': Timestamp.now(),
+      });
+    }
 
     setState(() {
-      if (currentIndex < profiles.length - 1) {
-        currentIndex++;
-      } else {
-        currentIndex = 0; // loop back or show "No more profiles"
+      profiles.removeAt(currentIndex);
+      if (profiles.isEmpty) {
+        noMoreProfiles = true;
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (noMoreProfiles) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          title: const Text("Matching Screen"),
+          backgroundColor: Colors.purple,
+        ),
+        body: const Center(
+          child: Text(
+            "Sorry, there are no more profiles to view currently",
+            style: TextStyle(fontSize: 18),
+          ),
+        ),
+      );
+    }
+
     if (profiles.isEmpty) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -89,7 +171,6 @@ class _MatchScreenState extends State<MatchScreen> {
               ],
             ),
             width: double.infinity,
-            height: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -104,37 +185,21 @@ class _MatchScreenState extends State<MatchScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Center(
-                  child: Text(
-                    'Age: ${profile['age'] ?? 'N/A'}',
-                    style: const TextStyle(fontSize: 18),
-                  ),
-                ),
-                Center(
-                  child: Text(
-                    'Sex: ${profile['sex'] ?? 'N/A'}',
-                    style: const TextStyle(fontSize: 18),
-                  ),
-                ),
+                Center(child: Text('Age: ${profile['age'] ?? 'N/A'}')),
+                Center(child: Text('Sex: ${profile['sex'] ?? 'N/A'}')),
                 const SizedBox(height: 24),
                 Text(
                   'Favorite past destination(s):\n${profile['favoriteDestinations'] ?? ''}',
-                  style: const TextStyle(fontSize: 16),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   'Bucket-list destinations:\n${profile['bucketList'] ?? ''}',
-                  style: const TextStyle(fontSize: 16),
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  'Bucket-list thrills:\n${profile['thrills'] ?? ''}',
-                  style: const TextStyle(fontSize: 16),
-                ),
+                Text('Bucket-list thrills:\n${profile['thrills'] ?? ''}'),
                 const SizedBox(height: 12),
                 Text(
                   'Dates wanting to travel:\n${profile['travelDates'] ?? ''}',
-                  style: const TextStyle(fontSize: 16),
                 ),
                 const Spacer(),
                 Row(
